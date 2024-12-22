@@ -20,7 +20,7 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'due_date' => 'datetime'
+        'due_date' => 'datetime:yyyy-MM-dd'
     ];
 
     public function user(): BelongsTo
