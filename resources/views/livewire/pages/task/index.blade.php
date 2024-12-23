@@ -6,8 +6,12 @@ use App\Models\Task;
 use App\Livewire\Forms\Task\UpdateForm;
 use App\Livewire\Forms\Task\CreateForm;
 use Livewire\Attributes\On;
+use Mary\Traits\Toast;
 
 new class extends Component {
+    use Toast;
+
+
     public Collection $tasks;
 
     public CreateForm $createForm;
@@ -19,6 +23,9 @@ new class extends Component {
     public bool $deleteModal = false;
 
     public ?Task $selectedTask;
+    public string $selectedStatus;
+    public string $search = '';
+    public string $sortBy = 'created_at';
 
     public $headers = [
         ['key' => 'id', 'label' => '#'],
@@ -32,6 +39,12 @@ new class extends Component {
         ['label' => 'Completed', 'value' => 'completed'],
         ['label' => 'In-progress', 'value' => 'in-progress'],
         ['label' => 'Pending', 'value' => 'pending'],
+    ];
+
+    public array $sorts = [
+        ['label' => 'Created Time', 'value' => 'created_at'],
+        ['label' => 'Updated Time', 'value' => 'updated_at'],
+        ['label' => 'Due Date', 'value' => 'due_date'],
     ];
 
     public function show($id)
@@ -74,6 +87,7 @@ new class extends Component {
         ]);
 
         $this->createModal = false;
+        $this->success('Task Created!');
         $this->dispatch('refresh');
     }
 
@@ -87,6 +101,7 @@ new class extends Component {
         ]);
 
         $this->editModal = false;
+        $this->success('Task Updated!');
         $this->dispatch('refresh');
     }
 
@@ -94,16 +109,54 @@ new class extends Component {
     {
         $this->selectedTask?->delete();
         $this->deleteModal = false;
+        $this->success('Task deleted!');
         $this->dispatch('refresh');
+    }
+
+    // hooks
+    public function updated($property)
+    {
+        $query = Task::whereBelongsTo(auth()->user());
+        if ($property === 'selectedStatus' && filled($this->selectedStatus)) {
+            $query->where('status', $this->selectedStatus);
+        }
+        if ($property === 'search' && filled($this->search)) {
+            $query->whereAny(['title', 'description'], 'LIKE', "%$this->search%");
+        }
+        if ($property === 'sortBy' && filled($this->sortBy)) {
+            $query->orderBy($this->sortBy, 'desc');
+        }
+        $this->tasks = $query->get();
     }
 }; ?>
 
-<div class="container mx-auto">
-    <div class="mt-10 flex flex-col space-y-2 md:space-y-4">
-        <section class="flex justify-between">
-            <h1 class="text-2xl font-bold">Task Management</h1>
+<div class="container mx-auto flex flex-col space-y-2 md:space-y-4" x-data="{ filterOpen: false }">
+    <x-mary-header title="Task Management" class="mt-10">
+        <x-slot:middle class="!justify-end">
+            <x-mary-input icon="o-magnifying-glass" wire:model.live="search" placeholder="Search..."/>
+        </x-slot:middle>
+        <x-slot:actions>
+            <x-mary-button icon="o-funnel" x-on:click="filterOpen = !filterOpen"/>
             <x-mary-button wire:click="createModal = true" class="btn-primary">Add Task</x-mary-button>
-        </section>
+        </x-slot:actions>
+    </x-mary-header>
+    <section class="flex justify-end space-x-2 md:space-x-4" x-show="filterOpen">
+        <x-mary-select
+                label="Status"
+                :options="$statuses"
+                option-value="value"
+                option-label="label"
+                placeholder="Select a status"
+                wire:model.live="selectedStatus" inline/>
+        <x-mary-select
+                label="Sort By"
+                :options="$sorts"
+                option-value="value"
+                option-label="label"
+                placeholder="Sort by (desc)"
+                wire:model.live="sortBy" inline/>
+    </section>
+    <div class="flex flex-col space-y-2 md:space-y-4">
         <x-mary-table :headers="$headers" :rows="$tasks">
             @scope('cell_title', $task)
             {{ str($task->title)->limit(30) }}

@@ -9,5 +9,6 @@
     </head>
     <body>
         {{ $slot }}
+        <x-mary-toast />
     </body>
 </html>
