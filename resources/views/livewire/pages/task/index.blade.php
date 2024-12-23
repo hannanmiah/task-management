@@ -78,6 +78,7 @@ new class extends Component {
 
     public function store()
     {
+        $this->createForm->validate();
         Task::create([
             'user_id' => auth()->id(),
             'title' => $this->createForm->title,
@@ -93,6 +94,8 @@ new class extends Component {
 
     public function update()
     {
+        $this->updateForm->validate();
+
         $this->selectedTask?->update([
             'title' => $this->updateForm->title,
             'description' => $this->updateForm->description,
